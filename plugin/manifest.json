@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "juwimana.surrey-rentals",
+  "name": "Surrey Rentals",
+  "version": "1.0.0",
+  "author": "juwimana",
+  "license": "MIT",
+  "description": "Surrey Route 323 Rental Finder bar widget and popup",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Surrey Rentals",
+    "description": "Live monitor for 2-3 bed houses/suites with A/C along Bus 323 under $2,000",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

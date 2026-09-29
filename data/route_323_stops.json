@@ -1,0 +1,443 @@
+[
+  {
+    "id": 6575502527,
+    "name": "138 St (NB) at 72 Ave",
+    "lat": 49.1339318,
+    "lon": -122.8385341,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6765500190,
+    "name": "138 St (NB) at 74 Ave",
+    "lat": 49.1375429,
+    "lon": -122.8385976,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6780379886,
+    "name": "138 St (NB) at 76 Ave",
+    "lat": 49.140207,
+    "lon": -122.8400496,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813167,
+    "name": "76 Ave (WB) at King George Blvd",
+    "lat": 49.140946,
+    "lon": -122.8437866,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6779913967,
+    "name": "76 Ave (WB) at King George Blvd",
+    "lat": 49.1409399,
+    "lon": -122.8467688,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6780348304,
+    "name": "76 Ave (WB) at 13300 Block",
+    "lat": 49.1410031,
+    "lon": -122.8535102,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6484954590,
+    "name": "76 Ave (WB) at 132 St",
+    "lat": 49.1410415,
+    "lon": -122.8576163,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6780347641,
+    "name": "76 Ave (WB) at 13000 Block",
+    "lat": 49.1410435,
+    "lon": -122.8607293,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6780347643,
+    "name": "76 Ave (WB) at 129A St",
+    "lat": 49.1410745,
+    "lon": -122.8640649,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813151,
+    "name": "128 St (NB) at 76 Ave",
+    "lat": 49.1413514,
+    "lon": -122.8677752,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6780347645,
+    "name": "128 St (NB) at 78 Ave",
+    "lat": 49.1450738,
+    "lon": -122.8678106,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813164,
+    "name": "128 St (NB) at 80 Ave",
+    "lat": 49.1485355,
+    "lon": -122.867813,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813161,
+    "name": "128 St (NB) at 82 Ave",
+    "lat": 49.1510855,
+    "lon": -122.867832,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813158,
+    "name": "128 St (NB) at 84 Ave",
+    "lat": 49.1557116,
+    "lon": -122.8678561,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813156,
+    "name": "128 St (NB) at 86 Ave",
+    "lat": 49.1592675,
+    "lon": -122.8678722,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813154,
+    "name": "128 St (NB) at 88 Ave",
+    "lat": 49.1629011,
+    "lon": -122.8678744,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6779523005,
+    "name": "128 St (NB) at Prince Charles Blvd",
+    "lat": 49.166938,
+    "lon": -122.8678984,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6484954592,
+    "name": "128 St (NB) at 92 Ave",
+    "lat": 49.1700432,
+    "lon": -122.8678921,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6779523003,
+    "name": "128 St (NB) at 93 Ave",
+    "lat": 49.171981,
+    "lon": -122.8678787,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6779523001,
+    "name": "128 St (NB) at 9400 Block",
+    "lat": 49.1748439,
+    "lon": -122.8679219,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6419813152,
+    "name": "128 St (NB) at 96 Ave",
+    "lat": 49.177463,
+    "lon": -122.86781,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6594009109,
+    "name": "128 St (NB) at 97A Ave",
+    "lat": 49.1801754,
+    "lon": -122.8677003,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6594009111,
+    "name": "128 St (NB) at 99 Ave",
+    "lat": 49.1824285,
+    "lon": -122.8676087,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6465867930,
+    "name": "128 St (NB) at 100 Ave",
+    "lat": 49.1847471,
+    "lon": -122.8675336,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 6594009113,
+    "name": "128 St (NB) at 102 Ave",
+    "lat": 49.1884199,
+    "lon": -122.8675965,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 5729400242,
+    "name": "104 Ave (EB) at 128 St",
+    "lat": 49.1916226,
+    "lon": -122.866873,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 5729400247,
+    "name": "104 Ave (EB) at 13000 Block",
+    "lat": 49.1916139,
+    "lon": -122.860409,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 5727364279,
+    "name": "104 Ave (EB) at 132 St",
+    "lat": 49.1915799,
+    "lon": -122.8558582,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 4387920891,
+    "name": "104 Ave (EB) at University Dr",
+    "lat": 49.1915296,
+    "lon": -122.8491852,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 5339972825,
+    "name": "Surrey Central Station Bay 11",
+    "lat": 49.1893021,
+    "lon": -122.84776,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 8543055419,
+    "name": "Newton Exchange Bay 11",
+    "lat": 49.1334694,
+    "lon": -122.8410379,
+    "direction": "323 Surrey Central Station"
+  },
+  {
+    "id": 5727364277,
+    "name": "104 Ave (WB) at University Dr",
+    "lat": 49.1917542,
+    "lon": -122.8516995,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 5727364280,
+    "name": "104 Ave (WB) at 132 St",
+    "lat": 49.1917506,
+    "lon": -122.857155,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 5729400244,
+    "name": "104 Ave (WB) at Old Yale Rd",
+    "lat": 49.1917716,
+    "lon": -122.864079,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 5729400243,
+    "name": "128 St (SB) at 104 Ave",
+    "lat": 49.1913229,
+    "lon": -122.867869,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6594009114,
+    "name": "128 St (SB) at 103 Ave",
+    "lat": 49.1895276,
+    "lon": -122.867816,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6594009112,
+    "name": "128 St (SB) at 102 Ave",
+    "lat": 49.1877534,
+    "lon": -122.867811,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6465867929,
+    "name": "128 St (SB) at 100 Ave",
+    "lat": 49.1841972,
+    "lon": -122.8678067,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6594009110,
+    "name": "128 St (SB) at 99 Ave",
+    "lat": 49.1819256,
+    "lon": -122.8678524,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6594009108,
+    "name": "128 St (SB) at 97A Ave",
+    "lat": 49.1795977,
+    "lon": -122.8679539,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813153,
+    "name": "128 St (SB) at 96 Ave",
+    "lat": 49.17678,
+    "lon": -122.868165,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6779523000,
+    "name": "128 St (SB) at 9400 Block",
+    "lat": 49.1743378,
+    "lon": -122.8681489,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6779523002,
+    "name": "128 St (SB) at 93 Ave",
+    "lat": 49.1714238,
+    "lon": -122.8681783,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6484954591,
+    "name": "128 St (SB) at 92 Ave",
+    "lat": 49.1695123,
+    "lon": -122.8681324,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6779523004,
+    "name": "128 St (SB) at Prince Charles Blvd",
+    "lat": 49.1663565,
+    "lon": -122.8681085,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813155,
+    "name": "128 St (SB) at 88 Ave",
+    "lat": 49.1621959,
+    "lon": -122.8681885,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813157,
+    "name": "128 St (SB) at 86 Ave",
+    "lat": 49.1584531,
+    "lon": -122.8681768,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813160,
+    "name": "128 St (SB) at 84 Ave",
+    "lat": 49.1549844,
+    "lon": -122.8681646,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813162,
+    "name": "128 St (SB) at 82 Ave",
+    "lat": 49.1498934,
+    "lon": -122.868121,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813163,
+    "name": "128 St (SB) at 80 Ave",
+    "lat": 49.1476267,
+    "lon": -122.868098,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6780347644,
+    "name": "128 St (SB) at 78 Ave",
+    "lat": 49.144359,
+    "lon": -122.8680932,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813150,
+    "name": "76 Ave (EB) at 128 St",
+    "lat": 49.1409602,
+    "lon": -122.8668494,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6780347642,
+    "name": "76 Ave (EB) at 130 St",
+    "lat": 49.1409033,
+    "lon": -122.8626088,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6780347640,
+    "name": "76 Ave (EB) at 13000 Block",
+    "lat": 49.1409101,
+    "lon": -122.8602511,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6484954589,
+    "name": "76 Ave (EB) at 132 St",
+    "lat": 49.1408474,
+    "lon": -122.8557062,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6780348303,
+    "name": "76 Ave (EB) at 13300 Block",
+    "lat": 49.1408491,
+    "lon": -122.852837,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6765500188,
+    "name": "76 Ave (EB) at 134A St",
+    "lat": 49.1408179,
+    "lon": -122.8492238,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6419813166,
+    "name": "76 Ave (EB) at King George Blvd",
+    "lat": 49.1407426,
+    "lon": -122.84355,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6780379885,
+    "name": "138 St (SB) at 75A Ave",
+    "lat": 49.1392911,
+    "lon": -122.8401956,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6765500189,
+    "name": "138 St (SB) at 74 Ave",
+    "lat": 49.1369362,
+    "lon": -122.8388403,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 6575502529,
+    "name": "72 Ave (WB) at 138 St",
+    "lat": 49.1337008,
+    "lon": -122.8392289,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 5339986142,
+    "name": "Newton Exchange Bay 1",
+    "lat": 49.1333124,
+    "lon": -122.841743,
+    "direction": "323 Newton Exchange"
+  },
+  {
+    "id": 5339972834,
+    "name": "Surrey Central Station Bay 2",
+    "lat": 49.1888532,
+    "lon": -122.8485467,
+    "direction": "323 Newton Exchange"
+  }
+]
