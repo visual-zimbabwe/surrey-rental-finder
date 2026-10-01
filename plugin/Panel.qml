@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -27,15 +28,51 @@ Panel {
   property string lastError: ""
   property string lastUpdated: "Just now"
 
+  // Search, Sorting & Selection
+  property string sortBy: "price" // "price", "walk", "newest"
+  property int selectedIndex: 0
+  property string searchQuery: ""
+  property bool searching: false
+
   readonly property int matchCount: matches ? matches.length : 0
   readonly property string runnerPath: "/home/juwimana/surrey-rental-finder/run.sh"
 
-  // UI styling properties
+  readonly property var sortedMatches: {
+    if (!root.matches || root.matches.length === 0) return []
+    var list = root.matches.slice(0)
+
+    // Filter by search query if active
+    if (root.searchQuery && root.searchQuery.trim() !== "") {
+      var q = root.searchQuery.trim().toLowerCase()
+      list = list.filter(function(item) {
+        var t = (item.title || "").toLowerCase()
+        var s = (item.nearest_stop_name || "").toLowerCase()
+        var h = (item.housing_type || "").toLowerCase()
+        return t.indexOf(q) !== -1 || s.indexOf(q) !== -1 || h.indexOf(q) !== -1
+      })
+    }
+
+    // Sort
+    if (root.sortBy === "price") {
+      list.sort(function(a, b) { return (a.price || 0) - (b.price || 0) })
+    } else if (root.sortBy === "walk") {
+      list.sort(function(a, b) { return (a.walk_time_minutes || 999) - (b.walk_time_minutes || 999) })
+    } else if (root.sortBy === "newest") {
+      list.sort(function(a, b) {
+        var da = a.first_seen_at || ""
+        var db = b.first_seen_at || ""
+        return db.localeCompare(da)
+      })
+    }
+    return list
+  }
+
+  // UI styling properties - pure theme colors
   readonly property color fg: bar ? bar.foreground : Color.foreground
   readonly property color accentColor: Color.accent
   readonly property color mutedColor: Color.muted
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  readonly property int panelWidth: Style.space(440)
+  readonly property int panelWidth: Style.space(460)
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -112,6 +149,19 @@ Panel {
     }
   }
 
+  onMatchesChanged: {
+    if (root.selectedIndex >= root.matches.length) {
+      root.selectedIndex = Math.max(0, root.matches.length - 1)
+    }
+  }
+
+  onOpenedChanged: {
+    if (root.opened) {
+      root.selectedIndex = 0
+      root.fetchMatches()
+    }
+  }
+
   Component.onCompleted: {
     root.fetchMatches()
   }
@@ -180,9 +230,9 @@ Panel {
     bar: root.bar
     text: {
       if (root.matchCount > 0) {
-        return "󰋜 " + root.matchCount + " Match" + (root.matchCount === 1 ? "" : "es")
+        return "\uf015 " + root.matchCount + " Match" + (root.matchCount === 1 ? "" : "es")
       }
-      return "󰋜 323 Rent"
+      return "\uf015 323 Rent"
     }
     fontSize: Style.bar.iconFont
     foreground: root.matchCount > 0 ? Color.accent : (bar ? bar.barForeground : Color.foreground)
@@ -212,9 +262,20 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      blocked: root.searching
 
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
+      onMoveRequested: function(dx, dy) {
+        if (!root.sortedMatches || root.sortedMatches.length === 0) return
+        if (dy > 0) {
+          root.selectedIndex = Math.min(root.sortedMatches.length - 1, Math.max(0, root.selectedIndex + 1))
+          listingsList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+        } else if (dy < 0) {
+          root.selectedIndex = Math.max(0, root.selectedIndex - 1)
+          listingsList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+        }
+      }
       onTextKey: function(t) {
         var k = t.toLowerCase()
         if (k === "s") root.triggerScan()
@@ -222,25 +283,57 @@ Panel {
         else if (k === "t") root.openTerminal()
         else if (k === "a") root.toggleAcRequired()
         else if (k === "h") root.toggleAllowApartments()
+        else if (k === "/") {
+          root.searching = true
+          Qt.callLater(function() { if (root.searching) searchField.forceActiveFocus() })
+        }
+        else if (k === "j") {
+          if (root.sortedMatches && root.sortedMatches.length > 0) {
+            root.selectedIndex = Math.min(root.sortedMatches.length - 1, Math.max(0, root.selectedIndex + 1))
+            listingsList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+          }
+        }
+        else if (k === "k") {
+          if (root.sortedMatches && root.sortedMatches.length > 0) {
+            root.selectedIndex = Math.max(0, root.selectedIndex - 1)
+            listingsList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+          }
+        }
+        else if (k === "o" || k === "\r" || k === "\n") {
+          if (root.selectedIndex >= 0 && root.selectedIndex < root.sortedMatches.length) {
+            root.openUrl(root.sortedMatches[root.selectedIndex].url)
+          }
+        }
+        else if (k === "1" || k === "p") {
+          root.sortBy = "price"
+        }
+        else if (k === "2" || k === "w") {
+          root.sortBy = "walk"
+        }
+        else if (k === "3" || k === "n") {
+          root.sortBy = "newest"
+        }
       }
 
       Column {
         id: mainColumn
         width: parent.width
-        spacing: Style.space(12)
+        spacing: Style.space(10)
 
+        // --------------------------------------------------------
         // HEADER HERO
+        // --------------------------------------------------------
         PanelHero {
           width: parent.width
           title: "Surrey 323 Rentals"
-          meta: root.isScanning ? "Scanning Craigslist Surrey..." : "Bus 323 Corridor · " + (root.configData.min_bedrooms || 2) + "-" + (root.configData.max_bedrooms || 3) + " Bed · Max $" + Math.round(root.configData.max_price || 2000)
+          meta: root.isScanning ? "Scanning Craigslist Surrey..." : "Route 323 Corridor · " + (root.configData.min_bedrooms || 2) + "-" + (root.configData.max_bedrooms || 3) + " Bed · Max $" + Math.round(root.configData.max_price || 2000)
           foreground: root.fg
           fontFamily: root.fontFamily
 
           iconComponent: Component {
             Text {
               textFormat: Text.PlainText
-              text: "󰋜"
+              text: "\uf015"
               color: root.matchCount > 0 ? Color.accent : root.fg
               font.family: root.fontFamily
               font.pixelSize: Style.font.display
@@ -249,20 +342,24 @@ Panel {
 
           trailingControl: Component {
             Row {
-              spacing: Style.space(8)
+              spacing: Style.space(6)
 
               // Settings Gear Button
               Rectangle {
-                width: Style.space(30)
-                height: Style.space(30)
-                radius: Style.space(6)
-                color: root.showSettings ? Color.accent : (gearMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.08))
+                width: Style.space(28)
+                height: Style.space(28)
+                radius: Style.space(4)
+                color: root.showSettings
+                  ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.18)
+                  : (gearMouse.containsMouse ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.12) : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.05))
 
                 Text {
+                  textFormat: Text.PlainText
                   anchors.centerIn: parent
-                  text: "⚙"
-                  color: root.showSettings ? Color.background : root.fg
-                  font.pixelSize: Style.font.title
+                  text: "\uf013"
+                  color: root.showSettings ? Color.accent : root.fg
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
                 }
 
                 MouseArea {
@@ -276,12 +373,13 @@ Panel {
 
               // Scan Now Button
               Rectangle {
-                width: Style.space(80)
-                height: Style.space(30)
-                radius: Style.space(6)
-                color: scanMouseArea.containsPress ? Qt.darker(Color.accent, 1.2) : (scanMouseArea.containsMouse ? Qt.lighter(Color.accent, 1.1) : Color.accent)
+                width: Style.space(78)
+                height: Style.space(28)
+                radius: Style.space(4)
+                color: Color.accent
 
                 Text {
+                  textFormat: Text.PlainText
                   anchors.centerIn: parent
                   text: root.isScanning ? "Scanning..." : "Scan Now"
                   color: Color.background
@@ -291,7 +389,6 @@ Panel {
                 }
 
                 MouseArea {
-                  id: scanMouseArea
                   anchors.fill: parent
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
@@ -302,29 +399,21 @@ Panel {
           }
         }
 
-        // INTERACTIVE FILTER CHIPS (Click to toggle!)
+        // --------------------------------------------------------
+        // INTERACTIVE FILTER ROW (Clean Typography, No Badges)
+        // --------------------------------------------------------
         Row {
           width: parent.width
-          spacing: Style.space(6)
+          spacing: Style.space(8)
 
-          // A/C Toggle Chip
-          Rectangle {
-            height: Style.space(24)
-            width: acChipText.implicitWidth + Style.space(14)
-            radius: Style.space(4)
-            color: root.configData.require_ac ? Qt.rgba(0.2, 0.8, 0.4, 0.25) : Qt.rgba(1, 1, 1, 0.08)
-            border.color: root.configData.require_ac ? Qt.rgba(0.3, 0.9, 0.5, 0.6) : "transparent"
-            border.width: 1
-
-            Text {
-              id: acChipText
-              anchors.centerIn: parent
-              text: root.configData.require_ac ? "❄ A/C Required" : "❄ A/C Optional"
-              color: root.configData.require_ac ? Qt.rgba(0.3, 0.9, 0.5, 1.0) : root.mutedColor
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: root.configData.require_ac
-            }
+          // A/C Toggle
+          Text {
+            textFormat: Text.PlainText
+            text: root.configData.require_ac ? "AC: Required" : "AC: Optional"
+            color: root.configData.require_ac ? Color.accent : root.mutedColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: root.configData.require_ac
 
             MouseArea {
               anchors.fill: parent
@@ -333,24 +422,22 @@ Panel {
             }
           }
 
-          // Housing Type Toggle Chip
-          Rectangle {
-            height: Style.space(24)
-            width: typeChipText.implicitWidth + Style.space(14)
-            radius: Style.space(4)
-            color: !root.configData.allow_apartments ? Qt.rgba(0.2, 0.6, 1.0, 0.25) : Qt.rgba(1, 1, 1, 0.08)
-            border.color: !root.configData.allow_apartments ? Qt.rgba(0.4, 0.8, 1.0, 0.6) : "transparent"
-            border.width: 1
+          Text {
+            textFormat: Text.PlainText
+            text: "·"
+            color: root.mutedColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
 
-            Text {
-              id: typeChipText
-              anchors.centerIn: parent
-              text: !root.configData.allow_apartments ? "🏡 House/Suite Only" : "🏢 All Types (incl Apt)"
-              color: !root.configData.allow_apartments ? Qt.rgba(0.4, 0.8, 1.0, 1.0) : root.mutedColor
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: !root.configData.allow_apartments
-            }
+          // Housing Type Toggle
+          Text {
+            textFormat: Text.PlainText
+            text: !root.configData.allow_apartments ? "Type: House/Suite" : "Type: All Types"
+            color: !root.configData.allow_apartments ? Color.accent : root.mutedColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: !root.configData.allow_apartments
 
             MouseArea {
               anchors.fill: parent
@@ -359,21 +446,21 @@ Panel {
             }
           }
 
-          // Max Price Chip
-          Rectangle {
-            height: Style.space(24)
-            width: priceChipText.implicitWidth + Style.space(14)
-            radius: Style.space(4)
-            color: Qt.rgba(1, 1, 1, 0.08)
+          Text {
+            textFormat: Text.PlainText
+            text: "·"
+            color: root.mutedColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
 
-            Text {
-              id: priceChipText
-              anchors.centerIn: parent
-              text: "💰 ≤ $" + Math.round(root.configData.max_price || 2000)
-              color: root.fg
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
+          // Max Price
+          Text {
+            textFormat: Text.PlainText
+            text: "Max: $" + Math.round(root.configData.max_price || 2000)
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
 
             MouseArea {
               anchors.fill: parent
@@ -382,21 +469,21 @@ Panel {
             }
           }
 
-          // Walk Distance Chip
-          Rectangle {
-            height: Style.space(24)
-            width: walkChipText.implicitWidth + Style.space(14)
-            radius: Style.space(4)
-            color: Qt.rgba(1, 1, 1, 0.08)
+          Text {
+            textFormat: Text.PlainText
+            text: "·"
+            color: root.mutedColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
 
-            Text {
-              id: walkChipText
-              anchors.centerIn: parent
-              text: "🚌 ≤ " + Math.round(root.configData.max_walk_mins || 5) + "m"
-              color: root.fg
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
+          // Walk Distance
+          Text {
+            textFormat: Text.PlainText
+            text: "Walk: \u2264 " + Math.round(root.configData.max_walk_mins || 5) + " min"
+            color: root.fg
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
 
             MouseArea {
               anchors.fill: parent
@@ -406,24 +493,27 @@ Panel {
           }
         }
 
+        // --------------------------------------------------------
         // EXPANDABLE SETTINGS DRAWER
+        // --------------------------------------------------------
         Rectangle {
           visible: root.showSettings
           width: parent.width
-          implicitHeight: settingsCol.implicitHeight + Style.space(20)
-          radius: Style.space(8)
-          color: Qt.rgba(1, 1, 1, 0.06)
-          border.color: Qt.rgba(1, 1, 1, 0.15)
+          implicitHeight: settingsCol.implicitHeight + Style.space(16)
+          radius: Style.space(6)
+          color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.04)
+          border.color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.12)
           border.width: 1
 
           Column {
             id: settingsCol
             anchors.fill: parent
-            anchors.margins: Style.space(12)
-            spacing: Style.space(10)
+            anchors.margins: Style.space(10)
+            spacing: Style.space(8)
 
             Text {
-              text: "⚙ Live Filter Criteria Controls"
+              textFormat: Text.PlainText
+              text: "Filter Criteria Settings"
               color: Color.accent
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -436,6 +526,7 @@ Panel {
               spacing: Style.space(10)
 
               Text {
+                textFormat: Text.PlainText
                 text: "Max Monthly Rent:"
                 color: root.fg
                 font.family: root.fontFamily
@@ -445,15 +536,16 @@ Panel {
               }
 
               Rectangle {
-                width: Style.space(28)
-                height: Style.space(24)
+                width: Style.space(26)
+                height: Style.space(22)
                 radius: Style.space(4)
-                color: Qt.rgba(1, 1, 1, 0.1)
-                Text { anchors.centerIn: parent; text: "-"; color: root.fg; font.bold: true }
+                color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08)
+                Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: "-"; color: root.fg; font.bold: true }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.adjustPrice(-100) }
               }
 
               Text {
+                textFormat: Text.PlainText
                 text: "$" + Math.round(root.configData.max_price || 2000)
                 color: Color.accent
                 font.family: root.fontFamily
@@ -465,11 +557,11 @@ Panel {
               }
 
               Rectangle {
-                width: Style.space(28)
-                height: Style.space(24)
+                width: Style.space(26)
+                height: Style.space(22)
                 radius: Style.space(4)
-                color: Qt.rgba(1, 1, 1, 0.1)
-                Text { anchors.centerIn: parent; text: "+"; color: root.fg; font.bold: true }
+                color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08)
+                Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: "+"; color: root.fg; font.bold: true }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.adjustPrice(100) }
               }
             }
@@ -480,6 +572,7 @@ Panel {
               spacing: Style.space(10)
 
               Text {
+                textFormat: Text.PlainText
                 text: "Max Walk to Bus 323:"
                 color: root.fg
                 font.family: root.fontFamily
@@ -489,15 +582,16 @@ Panel {
               }
 
               Rectangle {
-                width: Style.space(28)
-                height: Style.space(24)
+                width: Style.space(26)
+                height: Style.space(22)
                 radius: Style.space(4)
-                color: Qt.rgba(1, 1, 1, 0.1)
-                Text { anchors.centerIn: parent; text: "-"; color: root.fg; font.bold: true }
+                color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08)
+                Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: "-"; color: root.fg; font.bold: true }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.adjustWalkMins(-1) }
               }
 
               Text {
+                textFormat: Text.PlainText
                 text: Math.round(root.configData.max_walk_mins || 5) + " min"
                 color: Color.accent
                 font.family: root.fontFamily
@@ -509,260 +603,557 @@ Panel {
               }
 
               Rectangle {
-                width: Style.space(28)
-                height: Style.space(24)
+                width: Style.space(26)
+                height: Style.space(22)
                 radius: Style.space(4)
-                color: Qt.rgba(1, 1, 1, 0.1)
-                Text { anchors.centerIn: parent; text: "+"; color: root.fg; font.bold: true }
+                color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08)
+                Text { textFormat: Text.PlainText; anchors.centerIn: parent; text: "+"; color: root.fg; font.bold: true }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.adjustWalkMins(1) }
               }
             }
           }
         }
 
-        // STATS BAR
-        Rectangle {
+        // --------------------------------------------------------
+        // SEARCH INPUT (When active)
+        // --------------------------------------------------------
+        Row {
+          visible: root.searching
           width: parent.width
-          height: Style.space(34)
-          radius: Style.space(6)
-          color: Qt.rgba(1, 1, 1, 0.04)
+          spacing: Style.space(6)
 
-          Row {
-            anchors.centerIn: parent
-            spacing: Style.space(16)
+          Rectangle {
+            width: parent.width - Style.space(34)
+            height: Style.space(28)
+            radius: Style.space(4)
+            color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.04)
+            border.color: Color.accent
+            border.width: 1
+
+            Row {
+              anchors.fill: parent
+              anchors.leftMargin: Style.space(8)
+              anchors.rightMargin: Style.space(8)
+              spacing: Style.space(6)
+
+              Text {
+                textFormat: Text.PlainText
+                text: "\uf002"
+                color: root.mutedColor
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                anchors.verticalCenter: parent.verticalCenter
+              }
+
+              TextInput {
+                id: searchField
+                width: parent.width - Style.space(24)
+                anchors.verticalCenter: parent.verticalCenter
+                color: root.fg
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                selectByMouse: true
+                text: root.searchQuery
+                onTextChanged: {
+                  root.searchQuery = text
+                  root.selectedIndex = 0
+                }
+                Keys.onEscapePressed: {
+                  root.searchQuery = ""
+                  root.searching = false
+                  keyCatcher.forceActiveFocus()
+                }
+                Keys.onDownPressed: {
+                  if (root.sortedMatches && root.sortedMatches.length > 0) {
+                    root.selectedIndex = Math.min(root.sortedMatches.length - 1, root.selectedIndex + 1)
+                    listingsList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+                  }
+                }
+                Keys.onUpPressed: {
+                  if (root.sortedMatches && root.sortedMatches.length > 0) {
+                    root.selectedIndex = Math.max(0, root.selectedIndex - 1)
+                    listingsList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+                  }
+                }
+                Keys.onReturnPressed: {
+                  if (root.selectedIndex >= 0 && root.selectedIndex < root.sortedMatches.length) {
+                    root.openUrl(root.sortedMatches[root.selectedIndex].url)
+                  }
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  anchors.fill: parent
+                  text: "Filter listings by title, street, or type..."
+                  color: root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  verticalAlignment: Text.AlignVCenter
+                  visible: !searchField.text && !searchField.activeFocus
+                }
+              }
+            }
+          }
+
+          // Close Search button
+          Rectangle {
+            width: Style.space(28)
+            height: Style.space(28)
+            radius: Style.space(4)
+            color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.06)
 
             Text {
-              text: "Scanned: " + root.stats.total_scanned
+              textFormat: Text.PlainText
+              anchors.centerIn: parent
+              text: "\uf00d"
               color: root.mutedColor
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
             }
-            Text {
-              text: "Near Route 323: " + root.stats.near_bus_323
-              color: root.mutedColor
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
-            Text {
-              text: "Matches: " + root.matchCount
-              color: root.matchCount > 0 ? Color.accent : root.fg
-              font.bold: root.matchCount > 0
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
+
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                root.searchQuery = ""
+                root.searching = false
+                keyCatcher.forceActiveFocus()
+              }
             }
           }
         }
 
-        // LISTINGS CONTENT OR EMPTY STATE
-        Column {
+        // --------------------------------------------------------
+        // STATS & SORTING ROW (Clean Text Controls)
+        // --------------------------------------------------------
+        Item {
           width: parent.width
-          spacing: Style.space(10)
+          height: Style.space(24)
 
-          // If there are matches, show each match in a card
-          Repeater {
-            model: root.matches
-            delegate: Rectangle {
-              width: parent.width
-              implicitHeight: cardCol.implicitHeight + Style.space(20)
-              radius: Style.space(8)
-              color: cardMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(1, 1, 1, 0.05)
-              border.color: Qt.rgba(1, 1, 1, 0.12)
-              border.width: 1
+          // Left: Count & Status
+          Row {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(6)
+
+            Text {
+              textFormat: Text.PlainText
+              text: (root.searchQuery ? (root.sortedMatches.length + " of " + root.matchCount) : root.matchCount) + " Match" + (root.matchCount === 1 ? "" : "es")
+              color: root.matchCount > 0 ? Color.accent : root.fg
+              font.bold: true
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              text: "· " + root.stats.total_scanned + " scanned"
+              color: root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+          }
+
+          // Right: Sort Actions & Search Toggle
+          Row {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(8)
+
+            Text {
+              textFormat: Text.PlainText
+              text: "Sort:"
+              color: root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              text: "Price"
+              color: root.sortBy === "price" ? Color.accent : root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: root.sortBy === "price"
+              anchors.verticalCenter: parent.verticalCenter
 
               MouseArea {
-                id: cardMouse
                 anchors.fill: parent
-                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.openUrl(modelData.url)
+                onClicked: root.sortBy = "price"
               }
+            }
 
-              Column {
-                id: cardCol
+            Text {
+              textFormat: Text.PlainText
+              text: "·"
+              color: root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              text: "Walk"
+              color: root.sortBy === "walk" ? Color.accent : root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: root.sortBy === "walk"
+              anchors.verticalCenter: parent.verticalCenter
+
+              MouseArea {
                 anchors.fill: parent
-                anchors.margins: Style.space(10)
-                spacing: Style.space(6)
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.sortBy = "walk"
+              }
+            }
 
-                // Top row: Price and Badges
-                Row {
-                  width: parent.width
-                  spacing: Style.space(8)
+            Text {
+              textFormat: Text.PlainText
+              text: "·"
+              color: root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
+            }
 
-                  Text {
-                    text: "$" + Math.round(modelData.price) + "/mo"
-                    color: Color.accent
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.title
-                    font.bold: true
-                  }
+            Text {
+              textFormat: Text.PlainText
+              text: "Newest"
+              color: root.sortBy === "newest" ? Color.accent : root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: root.sortBy === "newest"
+              anchors.verticalCenter: parent.verticalCenter
 
-                  Rectangle {
-                    height: Style.space(20)
-                    width: bedBathLabel.implicitWidth + Style.space(8)
-                    radius: Style.space(4)
-                    color: Qt.rgba(0.2, 0.6, 1.0, 0.2)
-                    anchors.verticalCenter: parent.verticalCenter
-                    Text {
-                      id: bedBathLabel
-                      anchors.centerIn: parent
-                      text: modelData.bedrooms + " Bed · " + (modelData.bathrooms || "1") + " Bath"
-                      color: Qt.rgba(0.4, 0.8, 1.0, 1.0)
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
-                      font.bold: true
-                    }
-                  }
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.sortBy = "newest"
+              }
+            }
 
-                  Rectangle {
-                    height: Style.space(20)
-                    width: typeLabel.implicitWidth + Style.space(8)
-                    radius: Style.space(4)
-                    color: Qt.rgba(1, 1, 1, 0.1)
-                    anchors.verticalCenter: parent.verticalCenter
-                    Text {
-                      id: typeLabel
-                      anchors.centerIn: parent
-                      text: modelData.housing_type
-                      color: root.fg
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
-                    }
-                  }
+            // Search Icon Toggle
+            Text {
+              textFormat: Text.PlainText
+              text: "\uf002"
+              color: root.searching ? Color.accent : root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
 
-                  Rectangle {
-                    height: Style.space(20)
-                    width: acLabel.implicitWidth + Style.space(8)
-                    radius: Style.space(4)
-                    color: modelData.has_ac ? Qt.rgba(0.2, 0.8, 0.4, 0.2) : Qt.rgba(1, 1, 1, 0.08)
-                    anchors.verticalCenter: parent.verticalCenter
-                    Text {
-                      id: acLabel
-                      anchors.centerIn: parent
-                      text: modelData.has_ac ? "❄ A/C" : "No AC"
-                      color: modelData.has_ac ? Qt.rgba(0.3, 0.9, 0.5, 1.0) : root.mutedColor
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
-                      font.bold: modelData.has_ac
-                    }
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.searching = !root.searching
+                  if (root.searching) {
+                    Qt.callLater(function() { searchField.forceActiveFocus() })
                   }
                 }
+              }
+            }
+          }
+        }
 
-                // Title
+        // --------------------------------------------------------
+        // SCROLLABLE LISTVIEW FOR LISTINGS
+        // --------------------------------------------------------
+        ListView {
+          id: listingsList
+          width: parent.width
+          height: Math.min(contentHeight, root.showSettings ? Style.space(240) : (root.searching ? Style.space(330) : Style.space(370)))
+          visible: root.sortedMatches.length > 0
+          clip: true
+          model: root.sortedMatches
+          spacing: Style.space(6)
+          boundsBehavior: Flickable.StopAtBounds
+          flickableDirection: Flickable.VerticalFlick
+          interactive: contentHeight > height
+          currentIndex: root.selectedIndex
+
+          ScrollBar.vertical: ScrollBar {
+            id: listScroll
+            policy: ScrollBar.AsNeeded
+          }
+
+          delegate: Rectangle {
+            id: cardRect
+            width: listingsList.width - (listingsList.interactive ? Style.space(8) : 0)
+            implicitHeight: cardCol.implicitHeight + Style.space(16)
+            radius: Style.space(6)
+            color: (root.selectedIndex === index)
+              ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08)
+              : (cardMouse.containsMouse ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.04) : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.02))
+            border.color: (root.selectedIndex === index)
+              ? Color.accent
+              : (cardMouse.containsMouse ? Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.16) : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08))
+            border.width: 1
+
+            MouseArea {
+              id: cardMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onEntered: {
+                root.selectedIndex = index
+              }
+              onClicked: root.openUrl(modelData.url)
+            }
+
+            Column {
+              id: cardCol
+              anchors.fill: parent
+              anchors.margins: Style.space(8)
+              spacing: Style.space(4)
+
+              // Line 1: Primary Metrics & Metadata (Plain Text, No Badges)
+              Row {
+                width: parent.width
+                spacing: Style.space(6)
+
                 Text {
-                  width: parent.width
-                  text: modelData.title
+                  textFormat: Text.PlainText
+                  text: "$" + Math.round(modelData.price) + "/mo"
+                  color: Color.accent
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.title
+                  font.bold: true
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  text: "·"
+                  color: root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  text: modelData.bedrooms + " Bed" + (modelData.bathrooms ? ", " + modelData.bathrooms + " Bath" : "")
                   color: root.fg
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.body
                   font.bold: true
-                  elide: Text.ElideRight
-                  maximumLineCount: 1
+                  anchors.verticalCenter: parent.verticalCenter
                 }
 
-                // Nearest Bus 323 Stop & Walk Time
-                Row {
-                  width: parent.width
-                  spacing: Style.space(6)
-                  Text {
-                    text: "🚌 " + (modelData.nearest_stop_name || "Route 323 Stop") + " (" + (modelData.walk_time_minutes ? modelData.walk_time_minutes.toFixed(1) : "?") + " min walk · " + (modelData.distance_meters ? Math.round(modelData.distance_meters) : "?") + "m)"
-                    color: root.mutedColor
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    elide: Text.ElideRight
-                    width: parent.width - Style.space(80)
-                  }
+                Text {
+                  textFormat: Text.PlainText
+                  text: "·"
+                  color: root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  anchors.verticalCenter: parent.verticalCenter
+                }
 
-                  Text {
-                    text: "Open ↗"
-                    color: Color.accent
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    font.bold: true
-                  }
+                Text {
+                  textFormat: Text.PlainText
+                  text: modelData.housing_type
+                  color: root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  text: "·"
+                  color: root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  text: modelData.has_ac ? "AC" : "No AC"
+                  color: modelData.has_ac ? Color.accent : root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: modelData.has_ac
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Item {
+                  Layout.fillWidth: true
+                  width: Style.space(4)
+                  height: 1
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: (root.selectedIndex === index) ? "[Enter] Open" : "Open \uf08e"
+                  color: Color.accent
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
                 }
               }
-            }
-          }
 
-          // EMPTY STATE (when no matches found)
-          Rectangle {
-            visible: root.matchCount === 0
-            width: parent.width
-            height: Style.space(130)
-            radius: Style.space(8)
-            color: Qt.rgba(1, 1, 1, 0.03)
-            border.color: Qt.rgba(1, 1, 1, 0.08)
-            border.width: 1
-
-            Column {
-              anchors.centerIn: parent
-              spacing: Style.space(6)
-              width: parent.width - Style.space(30)
-
+              // Line 2: Title (Full text, easy to read)
               Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "No Live Matches Found"
+                textFormat: Text.PlainText
+                width: parent.width
+                text: modelData.title
                 color: root.fg
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.body
                 font.bold: true
+                elide: Text.ElideRight
+                maximumLineCount: 1
               }
 
-              Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Scanned " + root.stats.total_scanned + " listings in Surrey. Current postings did not match the active criteria above."
-                color: root.mutedColor
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-                width: parent.width
-              }
-
+              // Line 3: Transit Stop & Walk Time (Monospace Bus Icon)
               Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Style.space(8)
+                width: parent.width
+                spacing: Style.space(6)
 
-                Rectangle {
-                  height: Style.space(26)
-                  width: Style.space(110)
-                  radius: Style.space(4)
-                  color: Color.accent
-
-                  Text {
-                    anchors.centerIn: parent
-                    text: root.isScanning ? "Scanning..." : "Scan Craigslist"
-                    color: Color.background
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    font.bold: true
-                  }
-
-                  MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.triggerScan()
-                  }
+                Text {
+                  textFormat: Text.PlainText
+                  text: "\uf207"
+                  color: root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  anchors.verticalCenter: parent.verticalCenter
                 }
 
-                Rectangle {
-                  height: Style.space(26)
-                  width: Style.space(110)
-                  radius: Style.space(4)
-                  color: Qt.rgba(1, 1, 1, 0.1)
+                Text {
+                  textFormat: Text.PlainText
+                  text: (modelData.nearest_stop_name || "Route 323 Stop") + " (" + (modelData.walk_time_minutes ? modelData.walk_time_minutes.toFixed(1) : "?") + " min walk · " + (modelData.distance_meters ? Math.round(modelData.distance_meters) : "?") + " m)"
+                  color: root.mutedColor
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideRight
+                  width: parent.width - Style.space(20)
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+              }
+            }
+          }
+        }
 
-                  Text {
-                    anchors.centerIn: parent
-                    text: "Open Terminal CLI"
-                    color: root.fg
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                  }
+        // --------------------------------------------------------
+        // EMPTY / NO-MATCH STATE
+        // --------------------------------------------------------
+        Rectangle {
+          visible: root.sortedMatches.length === 0
+          width: parent.width
+          height: Style.space(120)
+          radius: Style.space(6)
+          color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.03)
+          border.color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08)
+          border.width: 1
 
-                  MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.openTerminal()
+          Column {
+            anchors.centerIn: parent
+            spacing: Style.space(6)
+            width: parent.width - Style.space(30)
+
+            Text {
+              textFormat: Text.PlainText
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: root.searchQuery ? "No Matching Listings for Filter" : "No Live Matches Found"
+              color: root.fg
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: root.searchQuery
+                ? "No listings match '" + root.searchQuery + "'. Try clearing the filter."
+                : "Scanned " + root.stats.total_scanned + " listings in Surrey. Current postings did not match the active criteria above."
+              color: root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
+              width: parent.width
+            }
+
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: Style.space(8)
+
+              Rectangle {
+                visible: !root.searchQuery
+                height: Style.space(24)
+                width: Style.space(100)
+                radius: Style.space(4)
+                color: Color.accent
+
+                Text {
+                  textFormat: Text.PlainText
+                  anchors.centerIn: parent
+                  text: root.isScanning ? "Scanning..." : "Scan Craigslist"
+                  color: Color.background
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.triggerScan()
+                }
+              }
+
+              Rectangle {
+                visible: !root.searchQuery
+                height: Style.space(24)
+                width: Style.space(110)
+                radius: Style.space(4)
+                color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.08)
+
+                Text {
+                  textFormat: Text.PlainText
+                  anchors.centerIn: parent
+                  text: "\uf120 Open CLI"
+                  color: root.fg
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.openTerminal()
+                }
+              }
+
+              Rectangle {
+                visible: root.searchQuery !== ""
+                height: Style.space(24)
+                width: Style.space(100)
+                radius: Style.space(4)
+                color: Color.accent
+
+                Text {
+                  textFormat: Text.PlainText
+                  anchors.centerIn: parent
+                  text: "Clear Filter"
+                  color: Color.background
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    root.searchQuery = ""
+                    root.searching = false
+                    keyCatcher.forceActiveFocus()
                   }
                 }
               }
@@ -770,13 +1161,16 @@ Panel {
           }
         }
 
+        // --------------------------------------------------------
         // FOOTER
+        // --------------------------------------------------------
         Row {
           width: parent.width
           spacing: Style.space(8)
 
           Text {
-            text: "Updated: " + root.lastUpdated
+            textFormat: Text.PlainText
+            text: "Updated: " + root.lastUpdated + (root.matchCount > 3 ? " · [j/k] Navigate · [Enter] Open" : "")
             color: root.mutedColor
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -785,7 +1179,7 @@ Panel {
 
           Item {
             Layout.fillWidth: true
-            width: parent.width - Style.space(220)
+            width: parent.width - Style.space(210)
             height: 1
           }
 
@@ -793,11 +1187,12 @@ Panel {
             height: Style.space(24)
             width: Style.space(90)
             radius: Style.space(4)
-            color: Qt.rgba(1, 1, 1, 0.08)
+            color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.06)
 
             Text {
+              textFormat: Text.PlainText
               anchors.centerIn: parent
-              text: "Terminal [T]"
+              text: "\uf120 Terminal [T]"
               color: root.fg
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
