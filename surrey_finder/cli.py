@@ -186,7 +186,7 @@ def show_history():
 
     from rich.table import Table
     table = Table(title=f"📜 Historical Matches ({len(matches)} listings)")
-    table.add_column("Date Seen", style="dim")
+    table.add_column("Posted / Seen", style="dim")
     table.add_column("Title", style="bold")
     table.add_column("Price", justify="right")
     table.add_column("Beds/Baths", justify="center")
@@ -195,7 +195,8 @@ def show_history():
     table.add_column("Link", style="blue")
 
     for m in matches:
-        date_str = m["first_seen_at"][:10] if m["first_seen_at"] else ""
+        date_raw = m.get("posted_at") or m.get("first_seen_at") or ""
+        date_str = date_raw[:16].replace("T", " ") if date_raw else ""
         price_str = f"${m['price']:,.0f}" if m['price'] else "?"
         beds_baths = f"{m['bedrooms']}bd / {m['bathrooms']}ba"
         stop_info = f"{m['nearest_stop_name'] or 'N/A'} ({m['walk_time_minutes']} min)"

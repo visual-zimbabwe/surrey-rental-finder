@@ -29,13 +29,37 @@ Panel {
   property string lastUpdated: "Just now"
 
   // Search, Sorting & Selection
-  property string sortBy: "price" // "price", "walk", "newest"
+  property string sortBy: "newest" // "newest", "price", "walk"
   property int selectedIndex: 0
   property string searchQuery: ""
   property bool searching: false
 
   readonly property int matchCount: matches ? matches.length : 0
   readonly property string runnerPath: "/home/juwimana/surrey-rental-finder/run.sh"
+
+  function formatRelativeTime(dateStr) {
+    if (!dateStr || dateStr === "") return ""
+    try {
+      var d = new Date(dateStr)
+      if (isNaN(d.getTime())) return ""
+      var now = new Date()
+      var diffMs = now.getTime() - d.getTime()
+      if (diffMs < 0) diffMs = 0
+      var diffSec = Math.floor(diffMs / 1000)
+      if (diffSec < 60) return "Just now"
+      var diffMin = Math.floor(diffSec / 60)
+      if (diffMin < 60) return diffMin + "m ago"
+      var diffHr = Math.floor(diffMin / 60)
+      if (diffHr < 24) return diffHr + "h ago"
+      var diffDays = Math.floor(diffHr / 24)
+      if (diffDays === 1) return "Yesterday"
+      if (diffDays < 7) return diffDays + "d ago"
+      var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      return months[d.getMonth()] + " " + d.getDate()
+    } catch (e) {
+      return ""
+    }
+  }
 
   readonly property var sortedMatches: {
     if (!root.matches || root.matches.length === 0) return []
@@ -53,15 +77,32 @@ Panel {
     }
 
     // Sort
-    if (root.sortBy === "price") {
-      list.sort(function(a, b) { return (a.price || 0) - (b.price || 0) })
-    } else if (root.sortBy === "walk") {
-      list.sort(function(a, b) { return (a.walk_time_minutes || 999) - (b.walk_time_minutes || 999) })
-    } else if (root.sortBy === "newest") {
+    if (root.sortBy === "newest" || root.sortBy === "latest") {
       list.sort(function(a, b) {
-        var da = a.first_seen_at || ""
-        var db = b.first_seen_at || ""
-        return db.localeCompare(da)
+        var da = a.posted_at || a.first_seen_at || a.last_seen_at || ""
+        var db = b.posted_at || b.first_seen_at || b.last_seen_at || ""
+        var timeA = da ? (new Date(da).getTime() || 0) : 0
+        var timeB = db ? (new Date(db).getTime() || 0) : 0
+        if (timeA !== timeB) return timeB - timeA
+        return (db || "").localeCompare(da || "")
+      })
+    } else if (root.sortBy === "price") {
+      list.sort(function(a, b) {
+        var pa = (a.price !== undefined && a.price !== null) ? a.price : 999999
+        var pb = (b.price !== undefined && b.price !== null) ? b.price : 999999
+        if (pa !== pb) return pa - pb
+        var da = a.posted_at || a.first_seen_at || ""
+        var db = b.posted_at || b.first_seen_at || ""
+        return (new Date(db).getTime() || 0) - (new Date(da).getTime() || 0)
+      })
+    } else if (root.sortBy === "walk") {
+      list.sort(function(a, b) {
+        var wa = (a.walk_time_minutes !== undefined && a.walk_time_minutes !== null) ? a.walk_time_minutes : 999
+        var wb = (b.walk_time_minutes !== undefined && b.walk_time_minutes !== null) ? b.walk_time_minutes : 999
+        if (wa !== wb) return wa - wb
+        var da = a.posted_at || a.first_seen_at || ""
+        var db = b.posted_at || b.first_seen_at || ""
+        return (new Date(db).getTime() || 0) - (new Date(da).getTime() || 0)
       })
     }
     return list
@@ -120,13 +161,19 @@ Panel {
 
   function openUrl(url) {
     if (!url || url === "") return
-    openBrowserProcess.command = ["xdg-open", url]
-    openBrowserProcess.running = true
+    var opened = false
+    try {
+      opened = Qt.openUrlExternally(url)
+    } catch (e) {
+      opened = false
+    }
+    if (!opened) {
+      Quickshell.execDetached(["xdg-open", url])
+    }
   }
 
   function openTerminal() {
-    openTerminalProcess.command = ["omarchy-launch-tui", "--app-id=org.omarchy.surrey-rentals", root.runnerPath, "scan", "--show-all"]
-    openTerminalProcess.running = true
+    Quickshell.execDetached(["omarchy-launch-tui", "--app-id=org.omarchy.surrey-rentals", root.runnerPath, "scan", "--show-all"])
   }
 
   function parseMatches(raw) {
@@ -213,14 +260,6 @@ Panel {
     }
   }
 
-  Process {
-    id: openBrowserProcess
-  }
-
-  Process {
-    id: openTerminalProcess
-  }
-
   // -------------------------------------------------------------
   // BAR WIDGET BUTTON
   // -------------------------------------------------------------
@@ -304,14 +343,14 @@ Panel {
             root.openUrl(root.sortedMatches[root.selectedIndex].url)
           }
         }
-        else if (k === "1" || k === "p") {
+        else if (k === "1" || k === "l" || k === "n") {
+          root.sortBy = "newest"
+        }
+        else if (k === "2" || k === "p") {
           root.sortBy = "price"
         }
-        else if (k === "2" || k === "w") {
+        else if (k === "3" || k === "w") {
           root.sortBy = "walk"
-        }
-        else if (k === "3" || k === "n") {
-          root.sortBy = "newest"
         }
       }
 
@@ -771,6 +810,31 @@ Panel {
 
             Text {
               textFormat: Text.PlainText
+              text: "Latest"
+              color: (root.sortBy === "newest" || root.sortBy === "latest") ? Color.accent : root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: (root.sortBy === "newest" || root.sortBy === "latest")
+              anchors.verticalCenter: parent.verticalCenter
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.sortBy = "newest"
+              }
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              text: "·"
+              color: root.mutedColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+              textFormat: Text.PlainText
               text: "Price"
               color: root.sortBy === "price" ? Color.accent : root.mutedColor
               font.family: root.fontFamily
@@ -807,31 +871,6 @@ Panel {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.sortBy = "walk"
-              }
-            }
-
-            Text {
-              textFormat: Text.PlainText
-              text: "·"
-              color: root.mutedColor
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Text {
-              textFormat: Text.PlainText
-              text: "Newest"
-              color: root.sortBy === "newest" ? Color.accent : root.mutedColor
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: root.sortBy === "newest"
-              anchors.verticalCenter: parent.verticalCenter
-
-              MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.sortBy = "newest"
               }
             }
 
@@ -993,6 +1032,12 @@ Panel {
                   color: Color.accent
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.openUrl(modelData.url)
+                  }
                 }
               }
 
@@ -1009,29 +1054,52 @@ Panel {
                 maximumLineCount: 1
               }
 
-              // Line 3: Transit Stop & Walk Time (Monospace Bus Icon)
-              Row {
+              // Line 3: Transit Stop & Walk Time + Posting Age
+              Item {
                 width: parent.width
-                spacing: Style.space(6)
+                implicitHeight: line3TransitRow.implicitHeight
 
-                Text {
-                  textFormat: Text.PlainText
-                  text: "\uf207"
-                  color: root.mutedColor
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
+                Row {
+                  id: line3TransitRow
+                  anchors.left: parent.left
+                  anchors.right: line3TimeText.visible ? line3TimeText.left : parent.right
+                  anchors.rightMargin: line3TimeText.visible ? Style.space(8) : 0
                   anchors.verticalCenter: parent.verticalCenter
+                  spacing: Style.space(6)
+
+                  Text {
+                    textFormat: Text.PlainText
+                    text: "\uf207"
+                    color: root.mutedColor
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+
+                  Text {
+                    textFormat: Text.PlainText
+                    text: (modelData.nearest_stop_name || "Route 323 Stop") + " (" + (modelData.walk_time_minutes ? modelData.walk_time_minutes.toFixed(1) : "?") + " min walk · " + (modelData.distance_meters ? Math.round(modelData.distance_meters) : "?") + " m)"
+                    color: root.mutedColor
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                    elide: Text.ElideRight
+                    width: parent.width - Style.space(16)
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
                 }
 
                 Text {
+                  id: line3TimeText
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  readonly property string timeStr: root.formatRelativeTime(modelData.posted_at || modelData.first_seen_at)
+                  visible: timeStr !== ""
                   textFormat: Text.PlainText
-                  text: (modelData.nearest_stop_name || "Route 323 Stop") + " (" + (modelData.walk_time_minutes ? modelData.walk_time_minutes.toFixed(1) : "?") + " min walk · " + (modelData.distance_meters ? Math.round(modelData.distance_meters) : "?") + " m)"
-                  color: root.mutedColor
+                  text: "\uf017 " + timeStr
+                  color: (timeStr.indexOf("m ago") !== -1 || timeStr === "Just now" || timeStr.indexOf("h ago") !== -1) ? Color.accent : root.mutedColor
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
-                  elide: Text.ElideRight
-                  width: parent.width - Style.space(20)
-                  anchors.verticalCenter: parent.verticalCenter
+                  font.bold: (timeStr.indexOf("m ago") !== -1 || timeStr === "Just now")
                 }
               }
             }

@@ -30,6 +30,8 @@ class ParsedListing:
     is_full_match: bool
     reasons_rejected: List[str]
     raw_body: str = ""
+    posted_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 class ListingParser:
     def __init__(self, config: Optional[SearchConfig] = None, transit: Optional[TransitCorridor] = None):
@@ -203,6 +205,9 @@ class ListingParser:
 
         is_full_match = len(reasons_rejected) == 0
 
+        posted_at = raw_data.get("posted_at")
+        updated_at = raw_data.get("updated_at")
+
         return ParsedListing(
             id=listing_id,
             source=source,
@@ -220,7 +225,9 @@ class ListingParser:
             walk_match=walk_match,
             is_full_match=is_full_match,
             reasons_rejected=reasons_rejected,
-            raw_body=body
+            raw_body=body,
+            posted_at=posted_at,
+            updated_at=updated_at
         )
 
 # Helper type aliases for type cleanliness
