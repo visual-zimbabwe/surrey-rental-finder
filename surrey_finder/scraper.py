@@ -122,6 +122,31 @@ class CraigslistScraper:
                         attributes.append(txt)
             item["attributes"] = attributes
 
+            # Extract posting & update timestamps
+            posted_at = None
+            updated_at = None
+            time_tags = soup.find_all("time", class_=lambda c: c and "timeago" in c)
+            for t in time_tags:
+                dt_val = t.get("datetime")
+                if dt_val:
+                    parent_text = t.parent.text.lower() if t.parent else ""
+                    if "posted" in parent_text and not posted_at:
+                        posted_at = dt_val
+                    elif "updated" in parent_text and not updated_at:
+                        updated_at = dt_val
+                    elif not posted_at:
+                        posted_at = dt_val
+
+            if not posted_at:
+                first_time = soup.find("time")
+                if first_time and first_time.get("datetime"):
+                    posted_at = first_time.get("datetime")
+
+            if posted_at:
+                item["posted_at"] = posted_at
+            if updated_at:
+                item["updated_at"] = updated_at
+
             # Extract body text
             body_el = soup.find("section", id="postingbody")
             if body_el:

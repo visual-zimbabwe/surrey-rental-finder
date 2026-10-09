@@ -54,7 +54,9 @@ def test_full_match_evaluation(parser):
         "body": "Spacious 3 bedroom 1 bath upper level of a house. Features ductless mini-split heat pump and air conditioning. Walking distance to bus.",
         "attributes": ["3br", "1ba", "air conditioning", "house"],
         "lat": 49.1340,
-        "lon": -122.8386
+        "lon": -122.8386,
+        "posted_at": "2026-10-08T21:20:00-0700",
+        "updated_at": "2026-10-08T22:00:00-0700"
     }
     result = parser.evaluate_listing(listing_data)
     assert result.is_full_match is True
@@ -64,3 +66,49 @@ def test_full_match_evaluation(parser):
     assert result.has_ac is True
     assert result.walk_match.is_within_threshold is True
     assert result.walk_match.walk_time_minutes < 5.0
+    assert result.posted_at == "2026-10-08T21:20:00-0700"
+    assert result.updated_at == "2026-10-08T22:00:00-0700"
+
+def test_database_latest_first_sorting(tmp_path, parser):
+    from surrey_finder.storage import RentalDatabase
+
+    db_file = tmp_path / "test_rentals.db"
+    db = RentalDatabase(db_path=db_file)
+
+    # Insert older listing
+    old_data = {
+        "id": "match-old",
+        "url": "https://vancouver.craigslist.org/test/old.html",
+        "title": "Older Match 2 Bed",
+        "price": "$1,600",
+        "body": "Air conditioning included in house",
+        "attributes": ["2br", "1ba", "air conditioning", "house"],
+        "lat": 49.1340,
+        "lon": -122.8386,
+        "posted_at": "2026-10-01T10:00:00"
+    }
+    parsed_old = parser.evaluate_listing(old_data)
+    db.save_listing(parsed_old)
+
+    # Insert newer listing
+    new_data = {
+        "id": "match-new",
+        "url": "https://vancouver.craigslist.org/test/new.html",
+        "title": "Newer Match 2 Bed",
+        "price": "$1,700",
+        "body": "Air conditioning included in suite",
+        "attributes": ["2br", "1ba", "air conditioning", "suite"],
+        "lat": 49.1340,
+        "lon": -122.8386,
+        "posted_at": "2026-10-08T15:00:00"
+    }
+    parsed_new = parser.evaluate_listing(new_data)
+    db.save_listing(parsed_new)
+
+    matches = db.get_all_matches()
+    assert len(matches) == 2
+    # Newest listing must come first
+    assert matches[0]["id"] == "match-new"
+    assert matches[0]["posted_at"] == "2026-10-08T15:00:00"
+    assert matches[1]["id"] == "match-old"
+    assert matches[1]["posted_at"] == "2026-10-01T10:00:00"
