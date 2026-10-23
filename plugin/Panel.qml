@@ -229,6 +229,15 @@ Panel {
       waitForEnd: true
       onStreamFinished: root.parseMatches(text)
     }
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (text && text.trim() !== "") {
+          console.warn("[surrey-rentals] matchesProcess stderr:", text.trim())
+          root.lastError = text.trim()
+        }
+      }
+    }
   }
 
   Process {
